@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, HashIcon, Loader, MessageSquareText, SendHorizonal } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 import { useGetChannels } from '@/features/channels/api/use-get-channels';
 import { useCreateChannelModal } from '@/features/channels/store/use-create-channel-modal';
@@ -8,6 +9,8 @@ import { useCurrentMember } from '@/features/members/api/use-current-member';
 import { useGetMembers } from '@/features/members/api/use-get-members';
 import { useUnreadCounts } from '@/features/reads/api/use-unread-counts';
 import { useGetWorkspace } from '@/features/workspaces/api/use-get-workspace';
+import { useConversationFilter } from '@/features/workspaces/store/use-conversation-filter';
+import { useNewMessageModal } from '@/features/workspaces/store/use-new-message-modal';
 import { useChannelId } from '@/hooks/use-channel-id';
 import { useMemberId } from '@/hooks/use-member-id';
 import { useWorkspaceId } from '@/hooks/use-workspace-id';
@@ -21,8 +24,11 @@ export const WorkspaceSidebar = () => {
   const workspaceId = useWorkspaceId();
   const channelId = useChannelId();
   const memberId = useMemberId();
+  const pathname = usePathname();
 
   const [_open, setOpen] = useCreateChannelModal();
+  const [_newMessageOpen, setNewMessageOpen] = useNewMessageModal();
+  const [filter] = useConversationFilter();
 
   const { data: member, isLoading: memberLoading } = useCurrentMember({ workspaceId });
   const { data: workspace, isLoading: workspaceLoading } = useGetWorkspace({ id: workspaceId });
@@ -47,19 +53,36 @@ export const WorkspaceSidebar = () => {
     );
   }
 
+  // "Unreads" filter keeps the open chat visible so it doesn't disappear while reading
+  const visibleChannels =
+    filter === 'unreads' ? channels?.filter((item) => item._id === channelId || !!unread?.channels[item._id]) : channels;
+  const visibleMembers = filter === 'unreads' ? members?.filter((item) => item._id === memberId || !!unread?.members[item._id]) : members;
+
   return (
     <div className="flex h-full flex-col gap-y-2 bg-[#5E2C5F]">
       <WorkspaceHeader workspace={workspace} isAdmin={member.role === 'admin'} />
 
       <div className="mt-3 flex flex-col px-2">
-        <SidebarItem label="Threads" icon={MessageSquareText} id="threads" />
+        <SidebarItem
+          label="Threads"
+          icon={MessageSquareText}
+          id="threads"
+          href={`/workspace/${workspaceId}/threads`}
+          variant={pathname.endsWith('/threads') ? 'active' : 'default'}
+        />
 
-        <SidebarItem label="Drafts & Sent" icon={SendHorizonal} id="draft" />
+        <SidebarItem
+          label="Drafts & Sent"
+          icon={SendHorizonal}
+          id="drafts"
+          href={`/workspace/${workspaceId}/drafts`}
+          variant={pathname.endsWith('/drafts') ? 'active' : 'default'}
+        />
       </div>
 
       {channels && channels.length !== 0 && (
         <WorkspaceSection label="Channels" hint="New Channel" onNew={member.role === 'admin' ? () => setOpen(true) : undefined}>
-          {channels?.map((item) => (
+          {visibleChannels?.map((item) => (
             <SidebarItem
               variant={channelId === item._id ? 'active' : 'default'}
               key={item._id}
@@ -73,8 +96,8 @@ export const WorkspaceSidebar = () => {
       )}
 
       {members && members.length !== 0 && (
-        <WorkspaceSection label="Direct Messages" hint="New Direct Message" onNew={member.role === 'admin' ? () => {} : undefined}>
-          {members?.map((item) => (
+        <WorkspaceSection label="Direct Messages" hint="New Direct Message" onNew={() => setNewMessageOpen(true)}>
+          {visibleMembers?.map((item) => (
             <UserItem
               key={item._id}
               id={item._id}

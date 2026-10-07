@@ -7,8 +7,10 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { Id } from '@/../convex/_generated/dataModel';
+import { getDraft, getDraftKey, removeDraft, saveDraft } from '@/features/drafts/lib/drafts';
 import { useCreateMessage } from '@/features/messages/api/use-create-message';
 import { useGenerateUploadUrl } from '@/features/upload/api/use-generate-upload-url';
+import { useMemberId } from '@/hooks/use-member-id';
 import { useWorkspaceId } from '@/hooks/use-workspace-id';
 
 const Editor = dynamic(() => import('@/components/editor'), {
@@ -39,8 +41,12 @@ export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
   const innerRef = useRef<Quill | null>(null);
 
   const workspaceId = useWorkspaceId();
+  const memberId = useMemberId();
 
   const { mutate: createMessage } = useCreateMessage();
+
+  const draftKey = getDraftKey(workspaceId, 'member', memberId);
+  const draft = typeof window === 'undefined' ? null : getDraft(draftKey);
   const { mutate: generateUploadUrl } = useGenerateUploadUrl();
 
   const handleSubmit = async ({ body, image }: { body: string; image: File | null }) => {
@@ -80,6 +86,8 @@ export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
 
       await createMessage(values, { throwError: true });
 
+      removeDraft(draftKey);
+
       setEditorKey((prevKey) => prevKey + 1);
     } catch (error) {
       toast.error('Failed to send message.');
@@ -91,7 +99,15 @@ export const ChatInput = ({ placeholder, conversationId }: ChatInputProps) => {
 
   return (
     <div className="w-full px-5">
-      <Editor placeholder={placeholder} key={editorKey} onSubmit={handleSubmit} disabled={isPending} innerRef={innerRef} />
+      <Editor
+        placeholder={placeholder}
+        key={`${draftKey}-${editorKey}`}
+        defaultValue={draft ? JSON.parse(draft.body).ops : []}
+        onTextChange={(body, text) => saveDraft({ workspaceId, target: 'member', targetId: memberId, body, text })}
+        onSubmit={handleSubmit}
+        disabled={isPending}
+        innerRef={innerRef}
+      />
     </div>
   );
 };
