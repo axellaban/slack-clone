@@ -1,6 +1,7 @@
 import { ConvexAuthNextjsServerProvider } from '@convex-dev/auth/nextjs/server';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { PropsWithChildren } from 'react';
 
 import { ConvexClientProvider } from '@/components/convex-client-provider';
@@ -24,10 +25,12 @@ const RootLayout = ({ children }: Readonly<PropsWithChildren>) => {
         <body className={`${inter.className} antialiased`}>
           <ConvexClientProvider>
             <JotaiProvider>
-              <Toaster theme="light" richColors closeButton />
-              <ModalProvider />
+              <NuqsAdapter>
+                <Toaster theme="light" richColors closeButton />
+                <ModalProvider />
 
-              {children}
+                {children}
+              </NuqsAdapter>
             </JotaiProvider>
           </ConvexClientProvider>
         </body>
