@@ -9,9 +9,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useCurrentMember } from '@/features/members/api/use-current-member';
 import { useGetMembers } from '@/features/members/api/use-get-members';
+import { useUnreadCounts } from '@/features/reads/api/use-unread-counts';
 import { useWorkspaceId } from '@/hooks/use-workspace-id';
 
 import { SidebarButton } from './sidebar-button';
+import { UnreadBadge } from './unread-badge';
 
 export const DmsPopover = () => {
   const router = useRouter();
@@ -21,6 +23,9 @@ export const DmsPopover = () => {
 
   const { data: currentMember } = useCurrentMember({ workspaceId });
   const { data: members, isLoading } = useGetMembers({ workspaceId });
+  const { data: unread } = useUnreadCounts({ workspaceId });
+
+  const totalUnread = Object.values(unread?.members ?? {}).reduce((total, count) => total + count, 0);
 
   const onMemberClick = (memberId: Id<'members'>) => {
     setOpen(false);
@@ -31,7 +36,12 @@ export const DmsPopover = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <SidebarButton icon={MessagesSquare} label="DMs" isActive={open || pathname.includes('/member/')} />
+        <SidebarButton
+          icon={MessagesSquare}
+          label="DMs"
+          isActive={open || pathname.includes('/member/')}
+          badge={totalUnread > 0 && <UnreadBadge count={totalUnread} className="absolute -right-1 -top-1 ml-0" />}
+        />
       </PopoverTrigger>
 
       <PopoverContent side="right" align="start" className="w-72 p-0" onFocusOutside={(e) => e.preventDefault()}>
@@ -58,6 +68,8 @@ export const DmsPopover = () => {
                 <span className="truncate">{member.user.name}</span>
 
                 {member._id === currentMember?._id && <span className="text-xs text-muted-foreground">(you)</span>}
+
+                <UnreadBadge count={unread?.members[member._id] ?? 0} />
               </button>
             ))}
           </div>

@@ -4,8 +4,10 @@ import type { Id } from '@/../convex/_generated/dataModel';
 import { MessageList } from '@/components/message-list';
 import { useGetMember } from '@/features/members/api/use-get-member';
 import { useGetMessages } from '@/features/messages/api/use-get-messages';
+import { useMarkRead } from '@/features/reads/api/use-mark-read';
 import { useMemberId } from '@/hooks/use-member-id';
 import { usePanel } from '@/hooks/use-panel';
+import { useWorkspaceId } from '@/hooks/use-workspace-id';
 
 import { ChatInput } from './chat-input';
 import { Header } from './header';
@@ -16,12 +18,15 @@ interface ConversationProps {
 
 export const Conversation = ({ id }: ConversationProps) => {
   const memberId = useMemberId();
+  const workspaceId = useWorkspaceId();
 
   const { onOpenProfile } = usePanel();
 
   const { data: member, isLoading: memberLoading } = useGetMember({ id: memberId });
 
   const { results, status, loadMore } = useGetMessages({ conversationId: id });
+
+  useMarkRead({ workspaceId, conversationId: id, latestMessageId: results[0]?._id });
 
   if (memberLoading || status === 'LoadingFirstPage') {
     return (
