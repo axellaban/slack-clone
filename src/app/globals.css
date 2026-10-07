@@ -128,3 +128,12 @@
     scrollbar-color: #dcdcdc #f8f8f8;
   }
 }
+
+/* @mentions inside messages, Slack style */
+.ql-renderer .mention {
+  @apply rounded-sm bg-[#1d9bd1]/10 px-0.5 font-medium text-[#1264a3];
+}
+
+.ql-renderer .mention-self {
+  @apply bg-[#f2c744]/40 text-[#1d1c1d];
+}

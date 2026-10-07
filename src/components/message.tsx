@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useCurrentUser } from '@/features/auth/api/use-current-user';
+import { useMentionNames } from '@/features/members/api/use-mention-options';
 import { useRemoveMessage } from '@/features/messages/api/use-remove-message';
 import { useUpdateMessage } from '@/features/messages/api/use-update-message';
 import { useToggleReaction } from '@/features/reactions/api/use-toggle-reaction';
@@ -91,6 +93,8 @@ export const Message = ({
   const { mutate: updateMessage, isPending: isUpdatingMessage } = useUpdateMessage();
   const { mutate: removeMessage, isPending: isRemovingMessage } = useRemoveMessage();
   const { mutate: toggleReaction, isPending: isTogglingReaction } = useToggleReaction();
+  const mentionNames = useMentionNames();
+  const { data: currentUser } = useCurrentUser();
 
   const avatarFallback = authorName.charAt(0).toUpperCase();
   const isPending = isUpdatingMessage || isRemovingMessage || isTogglingReaction;
@@ -172,7 +176,7 @@ export const Message = ({
               </div>
             ) : (
               <div className="flex w-full flex-col">
-                <Renderer value={body} />
+                <Renderer value={body} mentions={mentionNames} selfName={currentUser?.name} />
                 <Thumbnail url={image} />
 
                 {updatedAt ? <span className="text-xs text-muted-foreground">(edited)</span> : null}
@@ -249,7 +253,7 @@ export const Message = ({
                 </Hint>
               </div>
 
-              <Renderer value={body} />
+              <Renderer value={body} mentions={mentionNames} selfName={currentUser?.name} />
               <Thumbnail url={image} />
 
               {updatedAt ? <span className="text-xs text-muted-foreground">(edited)</span> : null}

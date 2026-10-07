@@ -1,14 +1,19 @@
 'use client';
 
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { Loader } from 'lucide-react';
-import type { PropsWithChildren } from 'react';
+import { usePathname } from 'next/navigation';
+import { type PropsWithChildren, useEffect } from 'react';
 import { type LayoutStorage, useDefaultLayout } from 'react-resizable-panels';
+import { useMedia } from 'react-use';
 
 import type { Id } from '@/../convex/_generated/dataModel';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Profile } from '@/features/members/components/profile';
 import { Thread } from '@/features/messages/components/thread';
 import { NotificationsBanner } from '@/features/notifications/components/notifications-banner';
+import { useMobileNav } from '@/features/workspaces/store/use-mobile-nav';
 import { usePanel } from '@/hooks/use-panel';
 
 import { NewMessageDialog } from './new-message-dialog';
@@ -26,7 +31,11 @@ const layoutStorage: LayoutStorage = {
 };
 
 const WorkspaceIdLayout = ({ children }: Readonly<PropsWithChildren>) => {
+  const pathname = usePathname();
   const { parentMessageId, profileMemberId, onClose } = usePanel();
+  const [mobileNavOpen, setMobileNavOpen] = useMobileNav();
+
+  const isDesktop = useMedia('(min-width: 768px)', true);
 
   const showPanel = !!parentMessageId || !!profileMemberId;
 
@@ -36,45 +45,74 @@ const WorkspaceIdLayout = ({ children }: Readonly<PropsWithChildren>) => {
     storage: layoutStorage,
   });
 
+  // close the mobile drawer after navigating somewhere
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname, setMobileNavOpen]);
+
+  const panel = parentMessageId ? (
+    <Thread messageId={parentMessageId as Id<'messages'>} onClose={onClose} />
+  ) : profileMemberId ? (
+    <Profile memberId={profileMemberId as Id<'members'>} onClose={onClose} />
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <Loader className="size-5 animate-spin text-muted-foreground" />
+    </div>
+  );
+
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh flex-col">
       <UnreadTitle />
       <NewMessageDialog />
       <NotificationsBanner />
       <Toolbar />
 
-      <div className="flex min-h-0 flex-1">
-        <Sidebar />
+      {isDesktop ? (
+        <div className="flex min-h-0 flex-1">
+          <Sidebar />
 
-        <ResizablePanelGroup orientation="horizontal" defaultLayout={defaultLayout} onLayoutChange={onLayoutChange}>
-          <ResizablePanel id="sidebar" defaultSize="20%" minSize="11%" className="bg-[#5E2C5F]">
-            <WorkspaceSidebar />
-          </ResizablePanel>
+          <ResizablePanelGroup orientation="horizontal" defaultLayout={defaultLayout} onLayoutChange={onLayoutChange}>
+            <ResizablePanel id="sidebar" defaultSize="20%" minSize="11%" className="bg-[#5E2C5F]">
+              <WorkspaceSidebar />
+            </ResizablePanel>
 
-          <ResizableHandle withHandle />
+            <ResizableHandle withHandle />
 
-          <ResizablePanel id="main" defaultSize="80%" minSize="20%">
-            {children}
-          </ResizablePanel>
+            <ResizablePanel id="main" defaultSize="80%" minSize="20%">
+              {children}
+            </ResizablePanel>
 
-          {showPanel && (
-            <>
-              <ResizableHandle withHandle />
-              <ResizablePanel id="panel" minSize="20%" defaultSize="29%">
-                {parentMessageId ? (
-                  <Thread messageId={parentMessageId as Id<'messages'>} onClose={onClose} />
-                ) : profileMemberId ? (
-                  <Profile memberId={profileMemberId as Id<'members'>} onClose={onClose} />
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <Loader className="size-5 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
-      </div>
+            {showPanel && (
+              <>
+                <ResizableHandle withHandle />
+                <ResizablePanel id="panel" minSize="20%" defaultSize="29%">
+                  {panel}
+                </ResizablePanel>
+              </>
+            )}
+          </ResizablePanelGroup>
+        </div>
+      ) : (
+        <div className="relative min-h-0 flex-1">
+          {children}
+
+          {showPanel && <div className="absolute inset-0 z-20 bg-white">{panel}</div>}
+
+          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+            <SheetContent className="flex w-[85vw] max-w-[360px]" aria-describedby={undefined}>
+              <VisuallyHidden.Root>
+                <SheetTitle>Navigation</SheetTitle>
+              </VisuallyHidden.Root>
+
+              <Sidebar />
+
+              <div className="min-w-0 flex-1">
+                <WorkspaceSidebar />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      )}
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 
 import type { Id } from '@/../convex/_generated/dataModel';
 import { getDraft, getDraftKey, removeDraft, saveDraft } from '@/features/drafts/lib/drafts';
+import { useMentionOptions } from '@/features/members/api/use-mention-options';
 import { useCreateMessage } from '@/features/messages/api/use-create-message';
 import { useGenerateUploadUrl } from '@/features/upload/api/use-generate-upload-url';
 import { useChannelId } from '@/hooks/use-channel-id';
@@ -43,6 +44,7 @@ export const ChatInput = ({ placeholder }: ChatInputProps) => {
   const channelId = useChannelId();
 
   const { mutate: createMessage } = useCreateMessage();
+  const mentions = useMentionOptions({ includeChannel: true });
 
   const draftKey = getDraftKey(workspaceId, 'channel', channelId);
   const draft = typeof window === 'undefined' ? null : getDraft(draftKey);
@@ -106,6 +108,7 @@ export const ChatInput = ({ placeholder }: ChatInputProps) => {
         onSubmit={handleSubmit}
         disabled={isPending}
         innerRef={innerRef}
+        mentions={mentions}
       />
     </div>
   );

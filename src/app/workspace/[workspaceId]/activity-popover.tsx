@@ -37,7 +37,13 @@ export const ActivityPopover = () => {
         <SidebarButton icon={Bell} label="Activity" isActive={open} />
       </PopoverTrigger>
 
-      <PopoverContent side="right" align="start" className="w-80 p-0" onFocusOutside={(e) => e.preventDefault()}>
+      <PopoverContent
+        side="right"
+        align="start"
+        className="w-80 p-0"
+        onFocusOutside={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <p className="border-b px-4 py-3 text-sm font-bold">Activity</p>
 
         {isLoading ? (

@@ -75,7 +75,13 @@ export const MoreMenu = () => {
           <SidebarButton icon={MoreHorizontal} label="More" isActive={open} />
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent side="right" align="start" className="w-60" onFocusOutside={(e) => e.preventDefault()}>
+        <DropdownMenuContent
+          side="right"
+          align="start"
+          className="w-60"
+          onFocusOutside={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           {isAdmin && workspace && (
             <>
               <DropdownMenuItem className="cursor-pointer py-2" onClick={() => setCreateChannelOpen(true)}>
