@@ -1,5 +1,6 @@
 // Ensures the Convex deployment targeted by CONVEX_DEPLOY_KEY has the
-// environment variables Convex Auth needs (JWT_PRIVATE_KEY, JWKS, SITE_URL).
+// environment variables Convex Auth needs (JWT_PRIVATE_KEY, JWKS, SITE_URL) and
+// the VAPID keys used for web push notifications.
 // Existing values are never overwritten, so it is safe to run on every build.
 import { execFileSync } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
@@ -35,6 +36,19 @@ if (!existing.has('JWT_PRIVATE_KEY') || !existing.has('JWKS')) {
   existing.delete('JWKS');
   setIfMissing('JWT_PRIVATE_KEY', pem.trimEnd().replace(/\n/g, ' '));
   setIfMissing('JWKS', jwks);
+}
+
+// Web push (VAPID) key pair, in the raw base64url format browsers and web-push expect.
+if (!existing.has('VAPID_PUBLIC_KEY') || !existing.has('VAPID_PRIVATE_KEY')) {
+  const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  const { x, y } = publicKey.export({ format: 'jwk' });
+  const { d } = privateKey.export({ format: 'jwk' });
+  const rawPublicKey = Buffer.concat([Buffer.from([4]), Buffer.from(x, 'base64url'), Buffer.from(y, 'base64url')]);
+
+  existing.delete('VAPID_PUBLIC_KEY');
+  existing.delete('VAPID_PRIVATE_KEY');
+  setIfMissing('VAPID_PUBLIC_KEY', rawPublicKey.toString('base64url'));
+  setIfMissing('VAPID_PRIVATE_KEY', d);
 }
 
 const vercelHost =

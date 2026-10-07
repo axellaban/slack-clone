@@ -51,6 +51,24 @@ const schema = defineSchema({
     .index('by_workspace_id', ['workspaceId'])
     .index('by_message_id', ['messageId'])
     .index('by_member_id', ['memberId']),
+  reads: defineTable({
+    memberId: v.id('members'),
+    workspaceId: v.id('workspaces'),
+    channelId: v.optional(v.id('channels')),
+    conversationId: v.optional(v.id('conversations')),
+    lastReadAt: v.number(),
+  })
+    .index('by_member_id', ['memberId'])
+    .index('by_member_id_channel_id', ['memberId', 'channelId'])
+    .index('by_member_id_conversation_id', ['memberId', 'conversationId']),
+  pushSubscriptions: defineTable({
+    userId: v.id('users'),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+  })
+    .index('by_user_id', ['userId'])
+    .index('by_endpoint', ['endpoint']),
 });
 
 export default schema;

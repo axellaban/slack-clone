@@ -6,6 +6,7 @@ import { useGetChannels } from '@/features/channels/api/use-get-channels';
 import { useCreateChannelModal } from '@/features/channels/store/use-create-channel-modal';
 import { useCurrentMember } from '@/features/members/api/use-current-member';
 import { useGetMembers } from '@/features/members/api/use-get-members';
+import { useUnreadCounts } from '@/features/reads/api/use-unread-counts';
 import { useGetWorkspace } from '@/features/workspaces/api/use-get-workspace';
 import { useChannelId } from '@/hooks/use-channel-id';
 import { useMemberId } from '@/hooks/use-member-id';
@@ -27,6 +28,7 @@ export const WorkspaceSidebar = () => {
   const { data: workspace, isLoading: workspaceLoading } = useGetWorkspace({ id: workspaceId });
   const { data: channels, isLoading: channelsLoading } = useGetChannels({ workspaceId });
   const { data: members, isLoading: membersLoading } = useGetMembers({ workspaceId });
+  const { data: unread } = useUnreadCounts({ workspaceId });
 
   if (memberLoading || workspaceLoading || channelsLoading || membersLoading) {
     return (
@@ -64,6 +66,7 @@ export const WorkspaceSidebar = () => {
               id={item._id}
               icon={HashIcon}
               label={item.name}
+              unreadCount={channelId === item._id ? 0 : unread?.channels[item._id]}
             />
           ))}
         </WorkspaceSection>
@@ -78,6 +81,7 @@ export const WorkspaceSidebar = () => {
               label={item.user.name}
               image={item.user.image}
               variant={item._id === memberId ? 'active' : 'default'}
+              unreadCount={item._id === memberId ? 0 : unread?.members[item._id]}
             />
           ))}
         </WorkspaceSection>

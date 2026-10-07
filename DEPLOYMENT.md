@@ -16,6 +16,8 @@ The build uses the installed Convex CLI, deploys the backend and passes its URL 
 
 Login/signup needs a matching JWT_PRIVATE_KEY and JWKS pair plus SITE_URL on the Convex deployment. The build initializes them: when CONVEX_DEPLOY_KEY is set, vercel.sh runs scripts/setup-convex-env.mjs, which generates the key pair and sets SITE_URL (the Vercel production URL) only if they are missing. Existing values are never overwritten, and the values are piped to the Convex CLI so they do not appear in build logs.
 
+The same script also generates VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, used for web push notifications (direct messages, thread replies and @mentions). Optionally set VAPID_SUBJECT to a mailto: address; otherwise SITE_URL is used. On iPhone/iPad, push notifications only work after adding the app to the Home Screen.
+
 These live in Convex Deployment Settings > Environment Variables, not in the repository. If the app moves to a custom domain, update SITE_URL there.
 
 For Google/GitHub OAuth also set:

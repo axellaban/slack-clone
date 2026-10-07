@@ -2,17 +2,27 @@
 
 import { Loader } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
-import { useDefaultLayout } from 'react-resizable-panels';
+import { type LayoutStorage, useDefaultLayout } from 'react-resizable-panels';
 
 import type { Id } from '@/../convex/_generated/dataModel';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Profile } from '@/features/members/components/profile';
 import { Thread } from '@/features/messages/components/thread';
+import { NotificationsBanner } from '@/features/notifications/components/notifications-banner';
 import { usePanel } from '@/hooks/use-panel';
 
 import { Sidebar } from './sidebar';
 import { Toolbar } from './toolbar';
+import { UnreadTitle } from './unread-title';
 import { WorkspaceSidebar } from './workspace-sidebar';
+
+// localStorage only exists in the browser; during server rendering fall back to the default layout
+const layoutStorage: LayoutStorage = {
+  getItem: (key) => (typeof window === 'undefined' ? null : window.localStorage.getItem(key)),
+  setItem: (key, value) => {
+    if (typeof window !== 'undefined') window.localStorage.setItem(key, value);
+  },
+};
 
 const WorkspaceIdLayout = ({ children }: Readonly<PropsWithChildren>) => {
   const { parentMessageId, profileMemberId, onClose } = usePanel();
@@ -22,13 +32,16 @@ const WorkspaceIdLayout = ({ children }: Readonly<PropsWithChildren>) => {
   const { defaultLayout, onLayoutChange } = useDefaultLayout({
     id: 'slack-clone-workspace-layout',
     panelIds: showPanel ? ['sidebar', 'main', 'panel'] : ['sidebar', 'main'],
+    storage: layoutStorage,
   });
 
   return (
-    <div className="h-full">
+    <div className="flex h-screen flex-col">
+      <UnreadTitle />
+      <NotificationsBanner />
       <Toolbar />
 
-      <div className="flex h-[calc(100vh_-_40px)]">
+      <div className="flex min-h-0 flex-1">
         <Sidebar />
 
         <ResizablePanelGroup orientation="horizontal" defaultLayout={defaultLayout} onLayoutChange={onLayoutChange}>

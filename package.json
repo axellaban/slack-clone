@@ -45,7 +45,8 @@
     "react-verification-input": "^4.2.2",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.29.9",
@@ -53,6 +54,7 @@
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/web-push": "3.6.4",
     "eslint": "^8",
     "eslint-config-next": "15.5.27",
     "eslint-config-prettier": "^10.1.8",

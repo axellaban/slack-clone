@@ -2,8 +2,10 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { paginationOptsValidator } from 'convex/server';
 import { v } from 'convex/values';
 
+import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import { type QueryCtx, mutation, query } from './_generated/server';
+import { toPlainText } from './utils';
 
 const populateThread = async (ctx: QueryCtx, messageId: Id<'messages'>) => {
   const messages = await ctx.db
@@ -214,20 +216,6 @@ export const getById = query({
   },
 });
 
-// message bodies are stored as Quill deltas
-const toPlainText = (body: string) => {
-  try {
-    const { ops } = JSON.parse(body) as { ops?: { insert?: unknown }[] };
-
-    return (ops ?? [])
-      .map((op) => (typeof op.insert === 'string' ? op.insert : ''))
-      .join('')
-      .trim();
-  } catch {
-    return body;
-  }
-};
-
 // replies and reactions from other members on the current member's recent messages
 export const activity = query({
   args: {
@@ -347,6 +335,8 @@ export const create = mutation({
       conversationId: _conversationId,
       parentMessageId: args.parentMessageId,
     });
+
+    await ctx.scheduler.runAfter(0, internal.pushNode.sendMessageNotifications, { messageId });
 
     return messageId;
   },

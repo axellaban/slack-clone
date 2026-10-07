@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useWorkspaceId } from '@/hooks/use-workspace-id';
 import { cn } from '@/lib/utils';
 
+import { UnreadBadge } from './unread-badge';
+
 const userItemVariants = cva('flex items-center gap-1.5 justify-start font-normal h-7 px-4 text-sm overflow-hidden', {
   variants: {
     variant: {
@@ -24,9 +26,10 @@ interface UserItemProps {
   label?: string;
   image?: string;
   variant?: VariantProps<typeof userItemVariants>['variant'];
+  unreadCount?: number;
 }
 
-export const UserItem = ({ id, label = 'Member', image, variant }: UserItemProps) => {
+export const UserItem = ({ id, label = 'Member', image, variant, unreadCount = 0 }: UserItemProps) => {
   const workspaceId = useWorkspaceId();
   const avatarFallback = label.charAt(0).toUpperCase();
 
@@ -39,7 +42,9 @@ export const UserItem = ({ id, label = 'Member', image, variant }: UserItemProps
           <AvatarFallback className="text-xs">{avatarFallback}</AvatarFallback>
         </Avatar>
 
-        <span className="truncate text-sm">{label}</span>
+        <span className={cn('truncate text-sm', unreadCount > 0 && 'font-bold text-white')}>{label}</span>
+
+        <UnreadBadge count={unreadCount} />
       </Link>
     </Button>
   );
