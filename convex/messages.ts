@@ -214,6 +214,101 @@ export const getById = query({
   },
 });
 
+// message bodies are stored as Quill deltas
+const toPlainText = (body: string) => {
+  try {
+    const { ops } = JSON.parse(body) as { ops?: { insert?: unknown }[] };
+
+    return (ops ?? [])
+      .map((op) => (typeof op.insert === 'string' ? op.insert : ''))
+      .join('')
+      .trim();
+  } catch {
+    return body;
+  }
+};
+
+// replies and reactions from other members on the current member's recent messages
+export const activity = query({
+  args: {
+    workspaceId: v.id('workspaces'),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    if (!userId) return [];
+
+    const currentMember = await getMember(ctx, args.workspaceId, userId);
+
+    if (!currentMember) return [];
+
+    const myMessages = await ctx.db
+      .query('messages')
+      .withIndex('by_member_id', (q) => q.eq('memberId', currentMember._id))
+      .order('desc')
+      .take(50);
+
+    const items = (
+      await Promise.all(
+        myMessages.map(async (message) => {
+          const replies = await ctx.db
+            .query('messages')
+            .withIndex('by_parent_message_id', (q) => q.eq('parentMessageId', message._id))
+            .collect();
+          const reactions = await populateReactions(ctx, message._id);
+
+          const channel = message.channelId ? await ctx.db.get(message.channelId) : null;
+          const conversation = message.conversationId ? await ctx.db.get(message.conversationId) : null;
+          const otherMemberId = conversation
+            ? conversation.memberOneId === currentMember._id
+              ? conversation.memberTwoId
+              : conversation.memberOneId
+            : undefined;
+
+          const location = {
+            channelId: channel?._id,
+            channelName: channel?.name,
+            otherMemberId,
+            threadId: message.parentMessageId ?? message._id,
+            messagePreview: toPlainText(message.body),
+          };
+
+          const events = [
+            ...replies.map((reply) => ({
+              _id: reply._id as string,
+              type: 'reply' as const,
+              memberId: reply.memberId,
+              timestamp: reply._creationTime,
+              content: toPlainText(reply.body),
+            })),
+            ...reactions.map((reaction) => ({
+              _id: reaction._id as string,
+              type: 'reaction' as const,
+              memberId: reaction.memberId,
+              timestamp: reaction._creationTime,
+              content: reaction.value,
+            })),
+          ].filter((event) => event.memberId !== currentMember._id);
+
+          return Promise.all(
+            events.map(async (event) => {
+              const member = await populateMember(ctx, event.memberId);
+              const user = member ? await populateUser(ctx, member.userId) : null;
+
+              return { ...event, ...location, user };
+            }),
+          );
+        }),
+      )
+    ).flat();
+
+    return items
+      .filter((item) => item.user !== null)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 30);
+  },
+});
+
 export const create = mutation({
   args: {
     body: v.string(),
