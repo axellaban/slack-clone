@@ -1,10 +1,8 @@
 'use client';
 
-import { Search } from 'lucide-react';
-import Link from 'next/link';
+import { Menu, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { FaGithub } from 'react-icons/fa';
 
 import type { Id } from '@/../convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -18,10 +16,10 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import { links } from '@/config';
 import { useGetChannels } from '@/features/channels/api/use-get-channels';
 import { useGetMembers } from '@/features/members/api/use-get-members';
 import { useGetWorkspace } from '@/features/workspaces/api/use-get-workspace';
+import { useMobileNav } from '@/features/workspaces/store/use-mobile-nav';
 import { useWorkspaceId } from '@/hooks/use-workspace-id';
 
 export const Toolbar = () => {
@@ -33,6 +31,7 @@ export const Toolbar = () => {
   const { data: members } = useGetMembers({ workspaceId });
 
   const [open, setOpen] = useState(false);
+  const [_mobileNavOpen, setMobileNavOpen] = useMobileNav();
 
   const onChannelClick = (channelId: Id<'channels'>) => {
     setOpen(false);
@@ -59,14 +58,24 @@ export const Toolbar = () => {
 
   return (
     <nav className="flex h-10 items-center justify-between bg-[#481349] p-1.5">
-      <div className="flex-1" aria-hidden />
+      <div className="flex flex-1 items-center">
+        <Button
+          variant="transparent"
+          size="iconSm"
+          className="md:hidden"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open navigation"
+        >
+          <Menu className="size-5 text-white" />
+        </Button>
+      </div>
 
-      <div className="min-w-[280px] max-w-[642px] shrink grow-[2]">
+      <div className="min-w-0 max-w-[642px] shrink grow-[2] md:min-w-[280px]">
         <Button onClick={() => setOpen(true)} size="sm" className="h-7 w-full justify-start bg-accent/25 px-2 hover:bg-accent/25">
           <Search className="mr-2 size-4 text-white" />
           <span className="text-xs text-white">Search {data?.name ?? 'workspace'}...</span>
 
-          <kbd className="pointer-events-none ml-auto inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-90">
+          <kbd className="pointer-events-none ml-auto hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-90 md:inline-flex">
             <span className="text-xs">⌘</span>K
           </kbd>
         </Button>
@@ -97,13 +106,7 @@ export const Toolbar = () => {
         </CommandDialog>
       </div>
 
-      <div className="ml-auto flex flex-1 items-center justify-end">
-        <Button variant="transparent" size="iconSm" asChild>
-          <Link href={links.sourceCode} target="_blank" rel="noreferrer noopener" title="Source Code">
-            <FaGithub className="size-5 text-white" />
-          </Link>
-        </Button>
-      </div>
+      <div className="flex-1" aria-hidden />
     </nav>
   );
 };

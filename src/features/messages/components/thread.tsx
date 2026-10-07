@@ -9,6 +9,7 @@ import type { Id } from '@/../convex/_generated/dataModel';
 import { Message } from '@/components/message';
 import { Button } from '@/components/ui/button';
 import { useCurrentMember } from '@/features/members/api/use-current-member';
+import { useMentionOptions } from '@/features/members/api/use-mention-options';
 import { useCreateMessage } from '@/features/messages/api/use-create-message';
 import { useGetMessage } from '@/features/messages/api/use-get-message';
 import { useGetMessages } from '@/features/messages/api/use-get-messages';
@@ -63,6 +64,7 @@ export const Thread = ({ messageId, onClose }: ThreadProps) => {
   const { data: message, isLoading: isMessageLoading } = useGetMessage({ id: messageId });
 
   const { mutate: createMessage } = useCreateMessage();
+  const mentions = useMentionOptions();
   const { mutate: generateUploadUrl } = useGenerateUploadUrl();
   const { results, status, loadMore } = useGetMessages({
     channelId,
@@ -273,7 +275,14 @@ export const Thread = ({ messageId, onClose }: ThreadProps) => {
       </div>
 
       <div className="px-4">
-        <Editor key={editorKey} onSubmit={handleSubmit} innerRef={innerRef} disabled={isPending} placeholder="Reply..." />
+        <Editor
+          key={editorKey}
+          onSubmit={handleSubmit}
+          innerRef={innerRef}
+          disabled={isPending}
+          placeholder="Reply..."
+          mentions={mentions}
+        />
       </div>
     </div>
   );

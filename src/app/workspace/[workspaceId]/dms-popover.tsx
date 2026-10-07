@@ -44,7 +44,13 @@ export const DmsPopover = () => {
         />
       </PopoverTrigger>
 
-      <PopoverContent side="right" align="start" className="w-72 p-0" onFocusOutside={(e) => e.preventDefault()}>
+      <PopoverContent
+        side="right"
+        align="start"
+        className="w-72 p-0"
+        onFocusOutside={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <p className="border-b px-4 py-3 text-sm font-bold">Direct messages</p>
 
         {isLoading ? (

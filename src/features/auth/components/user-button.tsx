@@ -44,7 +44,13 @@ export const UserButton = () => {
         </Avatar>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="center" side="right" className="w-60" onFocusOutside={(e) => e.preventDefault()}>
+      <DropdownMenuContent
+        align="center"
+        side="right"
+        className="w-60"
+        onFocusOutside={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <DropdownMenuItem onClick={() => setEditProfileOpen(true)} className="h-10">
           <Pencil className="mr-2 size-4" />
           Edit profile
