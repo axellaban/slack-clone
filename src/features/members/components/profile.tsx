@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import { useEditProfileModal } from '@/features/auth/store/use-edit-profile-modal';
 import { useConfirm } from '@/hooks/use-confirm';
 import { useWorkspaceId } from '@/hooks/use-workspace-id';
 
@@ -34,6 +35,8 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
   const [LeaveDialog, confirmLeave] = useConfirm('Leave workspace', 'Are you sure you want to leave this workspace?');
   const [UpdateDialog, confirmUpdate] = useConfirm('Change role', "Are you sure you want to change this member's role?");
   const [RemoveDialog, confirmRemove] = useConfirm('Remove member', 'Are you sure you want to remove this member?');
+
+  const [_editProfileOpen, setEditProfileOpen] = useEditProfileModal();
 
   const { data: currentMember, isLoading: isCurrentMemberLoading } = useCurrentMember({
     workspaceId,
@@ -160,6 +163,12 @@ export const Profile = ({ memberId, onClose }: ProfileProps) => {
 
         <div className="flex flex-col p-4">
           <p className="text-xl font-bold">{member.user.name}</p>
+
+          {currentMember._id === memberId && (
+            <Button onClick={() => setEditProfileOpen(true)} variant="outline" className="mt-4 w-full">
+              Edit profile
+            </Button>
+          )}
 
           {currentMember.role === 'admin' && currentMember._id !== memberId ? (
             <div className="mt-4 flex items-center gap-2">
