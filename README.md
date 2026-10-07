@@ -347,6 +347,14 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
 
+### Vercel + Convex
+
+1. In the Convex dashboard, open your project's **Production** deployment > **Settings** > **Generate Production Deploy Key**.
+2. Import this repository in Vercel and add the environment variable `CONVEX_DEPLOY_KEY` with that key (Production scope). No other variables are needed.
+3. Deploy. The build (`vercel.sh`) runs `scripts/setup-convex-env.mjs`, which sets `JWT_PRIVATE_KEY`, `JWKS` and `SITE_URL` on the Convex deployment if they are missing, then deploys the Convex functions and builds Next.js with the matching `NEXT_PUBLIC_CONVEX_URL`.
+
+If your app later moves to a custom domain, update `SITE_URL` in the Convex dashboard. Google/GitHub login additionally need the `AUTH_*` variables described above, set on the production deployment.
+
 ## :star: Give A Star
 
 You can also give this repository a star to show more people and they can use this repository.

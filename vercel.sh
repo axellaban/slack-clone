@@ -2,6 +2,8 @@
 set -eu
 
 if [ -n "${CONVEX_DEPLOY_KEY:-}" ]; then
+  # Make sure Convex Auth has its keys and SITE_URL before deploying.
+  node scripts/setup-convex-env.mjs
   # Use the repository's installed CLI and inject the matching backend URL.
   exec pnpm exec convex deploy --cmd 'pnpm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL
 fi
