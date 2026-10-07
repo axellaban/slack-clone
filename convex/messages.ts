@@ -216,6 +216,121 @@ export const getById = query({
   },
 });
 
+// where a message lives, for linking to it from lists
+const getLocation = async (ctx: QueryCtx, message: Doc<'messages'>, currentMemberId: Id<'members'>) => {
+  const channel = message.channelId ? await ctx.db.get(message.channelId) : null;
+  const conversation = message.conversationId ? await ctx.db.get(message.conversationId) : null;
+  const otherMemberId = conversation
+    ? conversation.memberOneId === currentMemberId
+      ? conversation.memberTwoId
+      : conversation.memberOneId
+    : undefined;
+  const otherMember = otherMemberId ? await ctx.db.get(otherMemberId) : null;
+  const otherUser = otherMember ? await populateUser(ctx, otherMember.userId) : null;
+
+  return {
+    channelId: channel?._id,
+    channelName: channel?.name,
+    otherMemberId,
+    otherMemberName: otherUser?.name,
+  };
+};
+
+// threads the current member started or replied to, most recently active first
+export const threads = query({
+  args: {
+    workspaceId: v.id('workspaces'),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    if (!userId) return [];
+
+    const currentMember = await getMember(ctx, args.workspaceId, userId);
+
+    if (!currentMember) return [];
+
+    const myMessages = await ctx.db
+      .query('messages')
+      .withIndex('by_member_id', (q) => q.eq('memberId', currentMember._id))
+      .order('desc')
+      .take(100);
+
+    const rootIds = [...new Set(myMessages.map((message) => message.parentMessageId ?? message._id))];
+
+    const items = await Promise.all(
+      rootIds.map(async (rootId) => {
+        const root = await ctx.db.get(rootId);
+
+        if (!root) return null;
+
+        const replies = await ctx.db
+          .query('messages')
+          .withIndex('by_parent_message_id', (q) => q.eq('parentMessageId', rootId))
+          .collect();
+
+        if (replies.length === 0) return null;
+
+        const lastReply = replies[replies.length - 1];
+        const rootMember = await populateMember(ctx, root.memberId);
+        const rootUser = rootMember ? await populateUser(ctx, rootMember.userId) : null;
+        const lastMember = await populateMember(ctx, lastReply.memberId);
+        const lastUser = lastMember ? await populateUser(ctx, lastMember.userId) : null;
+
+        return {
+          _id: root._id,
+          ...(await getLocation(ctx, root, currentMember._id)),
+          body: toPlainText(root.body) || (root.image ? 'Image' : ''),
+          author: rootUser ? { name: rootUser.name, image: rootUser.image } : null,
+          replyCount: replies.length,
+          lastReply: {
+            body: toPlainText(lastReply.body) || (lastReply.image ? 'Image' : ''),
+            name: lastUser?.name,
+            image: lastUser?.image,
+            timestamp: lastReply._creationTime,
+          },
+        };
+      }),
+    );
+
+    return items
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => b.lastReply.timestamp - a.lastReply.timestamp);
+  },
+});
+
+// the current member's most recent messages
+export const sent = query({
+  args: {
+    workspaceId: v.id('workspaces'),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    if (!userId) return [];
+
+    const currentMember = await getMember(ctx, args.workspaceId, userId);
+
+    if (!currentMember) return [];
+
+    const myMessages = await ctx.db
+      .query('messages')
+      .withIndex('by_member_id', (q) => q.eq('memberId', currentMember._id))
+      .order('desc')
+      .take(50);
+
+    return await Promise.all(
+      myMessages.map(async (message) => ({
+        _id: message._id,
+        ...(await getLocation(ctx, message, currentMember._id)),
+        parentMessageId: message.parentMessageId,
+        body: toPlainText(message.body) || (message.image ? 'Image' : ''),
+        timestamp: message._creationTime,
+      })),
+    );
+  },
+});
+
 // replies and reactions from other members on the current member's recent messages
 export const activity = query({
   args: {

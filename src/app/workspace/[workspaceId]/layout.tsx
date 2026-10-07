@@ -11,6 +11,7 @@ import { Thread } from '@/features/messages/components/thread';
 import { NotificationsBanner } from '@/features/notifications/components/notifications-banner';
 import { usePanel } from '@/hooks/use-panel';
 
+import { NewMessageDialog } from './new-message-dialog';
 import { Sidebar } from './sidebar';
 import { Toolbar } from './toolbar';
 import { UnreadTitle } from './unread-title';
@@ -38,6 +39,7 @@ const WorkspaceIdLayout = ({ children }: Readonly<PropsWithChildren>) => {
   return (
     <div className="flex h-screen flex-col">
       <UnreadTitle />
+      <NewMessageDialog />
       <NotificationsBanner />
       <Toolbar />
 

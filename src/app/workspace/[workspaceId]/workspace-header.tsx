@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ListFilter, SquarePen } from 'lucide-react';
+import { Check, ChevronDown, ListFilter, SquarePen } from 'lucide-react';
 import { useState } from 'react';
 
 import { Doc } from '@/../convex/_generated/dataModel';
@@ -10,9 +10,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useConversationFilter } from '@/features/workspaces/store/use-conversation-filter';
+import { useNewMessageModal } from '@/features/workspaces/store/use-new-message-modal';
 
 import { InviteModal } from './invite-modal';
 import { PreferencesModal } from './preferences-modal';
@@ -25,6 +28,8 @@ interface WorkspaceHeaderProps {
 export const WorkspaceHeader = ({ workspace, isAdmin }: WorkspaceHeaderProps) => {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [_newMessageOpen, setNewMessageOpen] = useNewMessageModal();
+  const [filter, setFilter] = useConversationFilter();
 
   return (
     <>
@@ -71,14 +76,29 @@ export const WorkspaceHeader = ({ workspace, isAdmin }: WorkspaceHeaderProps) =>
         </DropdownMenu>
 
         <div className="flex items-center gap-0.5">
-          <Hint label="Filter conversations" side="bottom">
-            <Button variant="transparent" size="iconSm">
-              <ListFilter className="size-4" />
-            </Button>
-          </Hint>
+          <DropdownMenu>
+            <Hint label="Filter conversations" side="bottom">
+              <DropdownMenuTrigger asChild>
+                <Button variant="transparent" size="iconSm" className={filter === 'unreads' ? 'bg-accent/20' : undefined}>
+                  <ListFilter className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </Hint>
+
+            <DropdownMenuContent side="bottom" align="end" className="w-52">
+              <DropdownMenuLabel>Show conversations</DropdownMenuLabel>
+
+              {(['all', 'unreads'] as const).map((value) => (
+                <DropdownMenuItem key={value} className="cursor-pointer" onClick={() => setFilter(value)}>
+                  <Check className={filter === value ? 'mr-2 size-4' : 'mr-2 size-4 opacity-0'} />
+                  {value === 'all' ? 'All conversations' : 'Unreads only'}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Hint label="New message" side="bottom">
-            <Button variant="transparent" size="iconSm">
+            <Button variant="transparent" size="iconSm" onClick={() => setNewMessageOpen(true)}>
               <SquarePen className="size-4" />
             </Button>
           </Hint>
