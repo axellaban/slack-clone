@@ -12,14 +12,13 @@ No local development environment is required. Vercel builds this repository; Con
 
 The build uses the installed Convex CLI, deploys the backend and passes its URL to Next.js as NEXT_PUBLIC_CONVEX_URL. You do not need a local .env.local or a development CONVEX_DEPLOYMENT on Vercel.
 
-## Authentication is a separate required step
+## Authentication
 
-Before expecting login/signup to work, the selected Convex production deployment must have a matching JWT_PRIVATE_KEY and JWKS pair. Do not replace an existing pair casually; first check whether authentication is already configured.
+Login/signup needs a matching JWT_PRIVATE_KEY and JWKS pair plus SITE_URL on the Convex deployment. The build initializes them: when CONVEX_DEPLOY_KEY is set, vercel.sh runs scripts/setup-convex-env.mjs, which generates the key pair and sets SITE_URL (the Vercel production URL) only if they are missing. Existing values are never overwritten, and the values are piped to the Convex CLI so they do not appear in build logs.
 
-These belong in Convex Deployment Settings > Environment Variables, not in the repository. The official initializer is npx @convex-dev/auth --prod; it can be run in an authorized cloud development environment. Alternatively use the official manual key-generation procedure and set the values in the Convex dashboard. The Vercel integration alone does not initialize Convex Auth.
+These live in Convex Deployment Settings > Environment Variables, not in the repository. If the app moves to a custom domain, update SITE_URL there.
 
 For Google/GitHub OAuth also set:
-- SITE_URL: the stable application origin, for example https://your-project.vercel.app
 - AUTH_GITHUB_ID and AUTH_GITHUB_SECRET for GitHub
 - AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET for Google
 
@@ -31,7 +30,7 @@ Use the HTTP Actions URL from the Convex dashboard for callbacks (.convex.site),
 
 ## Preview deployments
 
-Never expose the production deploy key to Preview builds. Use a separate Convex preview deploy key scoped to Vercel Preview; the build supports it. Configure the appropriate auth environment variables for these deployments too.
+Never expose the production deploy key to Preview builds. Use a separate Convex preview deploy key scoped to Vercel Preview; the build supports it and initializes the auth variables for each preview deployment the same way.
 
 Alternatively set NEXT_PUBLIC_CONVEX_URL for Preview to a separate, already-deployed development backend. In that mode only the frontend is built: backend changes in the preview are not deployed. Without either setting, the build stops with an explanatory error.
 
