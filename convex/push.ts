@@ -3,7 +3,7 @@ import { v } from 'convex/values';
 
 import type { Id } from './_generated/dataModel';
 import { internalMutation, internalQuery, mutation, query } from './_generated/server';
-import { toPlainText } from './utils';
+import { describeMessage } from './utils';
 
 const MAX_BODY_LENGTH = 140;
 
@@ -90,7 +90,7 @@ export const getMessageNotifications = internalQuery({
     if (!sender || !senderUser) return [];
 
     const senderName = senderUser.name ?? 'Someone';
-    const text = toPlainText(message.body) || (message.image ? 'Sent an image' : '');
+    const text = describeMessage(message);
     const recipients = new Set<Id<'members'>>();
 
     const parent = message.parentMessageId ? await ctx.db.get(message.parentMessageId) : null;

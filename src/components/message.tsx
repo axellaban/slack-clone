@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 
 import type { Doc, Id } from '../../convex/_generated/dataModel';
 import { Hint } from './hint';
+import { type MessageAttachment, MessageAttachments } from './message-attachments';
 import { Reactions } from './reactions';
 import { ThreadBar } from './thread-bar';
 import { Thumbnail } from './thumbnail';
@@ -51,6 +52,7 @@ interface MessageProps {
   >;
   body: Doc<'messages'>['body'];
   image: string | null | undefined;
+  attachments?: MessageAttachment[];
   createdAt: Doc<'messages'>['_creationTime'];
   updatedAt: Doc<'messages'>['updatedAt'];
   isEditing: boolean;
@@ -73,6 +75,7 @@ export const Message = ({
   body,
   createdAt,
   image,
+  attachments,
   isEditing,
   authorName = 'Member',
   authorImage,
@@ -178,6 +181,7 @@ export const Message = ({
               <div className="flex w-full flex-col">
                 <Renderer value={body} mentions={mentionNames} selfName={currentUser?.name} />
                 <Thumbnail url={image} />
+                <MessageAttachments attachments={attachments} />
 
                 {updatedAt ? <span className="text-xs text-muted-foreground">(edited)</span> : null}
 
@@ -255,6 +259,7 @@ export const Message = ({
 
               <Renderer value={body} mentions={mentionNames} selfName={currentUser?.name} />
               <Thumbnail url={image} />
+              <MessageAttachments attachments={attachments} />
 
               {updatedAt ? <span className="text-xs text-muted-foreground">(edited)</span> : null}
 

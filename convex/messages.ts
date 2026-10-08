@@ -5,7 +5,8 @@ import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import { type QueryCtx, mutation, query } from './_generated/server';
-import { toPlainText } from './utils';
+import { attachmentValidator } from './schema';
+import { describeMessage } from './utils';
 
 const populateThread = async (ctx: QueryCtx, messageId: Id<'messages'>) => {
   const messages = await ctx.db
@@ -49,6 +50,16 @@ const populateReactions = (ctx: QueryCtx, messageId: Id<'messages'>) => {
     .query('reactions')
     .withIndex('by_message_id', (q) => q.eq('messageId', messageId))
     .collect();
+};
+
+const MAX_ATTACHMENTS = 10;
+
+const populateAttachments = async (ctx: QueryCtx, attachments: Doc<'messages'>['attachments']) => {
+  return (
+    await Promise.all(
+      (attachments ?? []).map(async (attachment) => ({ ...attachment, url: await ctx.storage.getUrl(attachment.storageId) })),
+    )
+  ).filter((attachment): attachment is typeof attachment & { url: string } => !!attachment.url);
 };
 
 const populateUser = (ctx: QueryCtx, userId: Id<'users'>) => {
@@ -110,6 +121,7 @@ export const get = query({
             const reactions = await populateReactions(ctx, message._id);
             const thread = await populateThread(ctx, message._id);
             const image = message.image ? await ctx.storage.getUrl(message.image) : undefined;
+            const attachments = await populateAttachments(ctx, message.attachments);
 
             const reactionsWithCounts = reactions.map((reaction) => ({
               ...reaction,
@@ -139,6 +151,7 @@ export const get = query({
             return {
               ...message,
               image,
+              attachments,
               member,
               user,
               reactions: reactionsWithoutMemberIdProperty,
@@ -209,6 +222,7 @@ export const getById = query({
     return {
       ...message,
       image: message.image ? await ctx.storage.getUrl(message.image) : undefined,
+      attachments: await populateAttachments(ctx, message.attachments),
       user,
       member,
       reactions: reactionsWithoutMemberIdProperty,
@@ -280,11 +294,11 @@ export const threads = query({
         return {
           _id: root._id,
           ...(await getLocation(ctx, root, currentMember._id)),
-          body: toPlainText(root.body) || (root.image ? 'Image' : ''),
+          body: describeMessage(root),
           author: rootUser ? { name: rootUser.name, image: rootUser.image } : null,
           replyCount: replies.length,
           lastReply: {
-            body: toPlainText(lastReply.body) || (lastReply.image ? 'Image' : ''),
+            body: describeMessage(lastReply),
             name: lastUser?.name,
             image: lastUser?.image,
             timestamp: lastReply._creationTime,
@@ -324,7 +338,7 @@ export const sent = query({
         _id: message._id,
         ...(await getLocation(ctx, message, currentMember._id)),
         parentMessageId: message.parentMessageId,
-        body: toPlainText(message.body) || (message.image ? 'Image' : ''),
+        body: describeMessage(message),
         timestamp: message._creationTime,
       })),
     );
@@ -373,7 +387,7 @@ export const activity = query({
             channelName: channel?.name,
             otherMemberId,
             threadId: message.parentMessageId ?? message._id,
-            messagePreview: toPlainText(message.body),
+            messagePreview: describeMessage(message),
           };
 
           const events = [
@@ -382,7 +396,7 @@ export const activity = query({
               type: 'reply' as const,
               memberId: reply.memberId,
               timestamp: reply._creationTime,
-              content: toPlainText(reply.body),
+              content: describeMessage(reply),
             })),
             ...reactions.map((reaction) => ({
               _id: reaction._id as string,
@@ -416,6 +430,7 @@ export const create = mutation({
   args: {
     body: v.string(),
     image: v.optional(v.id('_storage')),
+    attachments: v.optional(v.array(attachmentValidator)),
     workspaceId: v.id('workspaces'),
     channelId: v.optional(v.id('channels')),
     conversationId: v.optional(v.id('conversations')),
@@ -429,6 +444,8 @@ export const create = mutation({
     const member = await getMember(ctx, args.workspaceId, userId);
 
     if (!member) throw new Error('Unauthorized.');
+
+    if ((args.attachments?.length ?? 0) > MAX_ATTACHMENTS) throw new Error(`You can attach up to ${MAX_ATTACHMENTS} files.`);
 
     let _conversationId = args.conversationId;
 
@@ -445,6 +462,7 @@ export const create = mutation({
       memberId: member._id,
       body: args.body,
       image: args.image,
+      attachments: args.attachments?.length ? args.attachments : undefined,
       channelId: args.channelId,
       workspaceId: args.workspaceId,
       conversationId: _conversationId,
@@ -502,6 +520,14 @@ export const remove = mutation({
     if (!member || member._id !== message.memberId) throw new Error('Unauthorized.');
 
     await ctx.db.delete(args.id);
+
+    // remove uploaded files too
+    const storageIds = [
+      ...(message.image ? [message.image] : []),
+      ...(message.attachments ?? []).map((attachment) => attachment.storageId),
+    ];
+
+    await Promise.all(storageIds.map((storageId) => ctx.storage.delete(storageId).catch(() => {})));
 
     return args.id;
   },

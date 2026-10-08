@@ -1,16 +1,25 @@
-import { ImageIcon, Smile, XIcon } from 'lucide-react';
-import Image from 'next/image';
+import { Check, Mic, Paperclip, Smile, Trash2 } from 'lucide-react';
 import Quill, { type QuillOptions } from 'quill';
 import type { Delta, Op } from 'quill/core';
 import 'quill/dist/quill.snow.css';
-import { type MutableRefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type MutableRefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MdSend } from 'react-icons/md';
 import { PiTextAa } from 'react-icons/pi';
+import { toast } from 'sonner';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  MAX_ATTACHMENTS,
+  MAX_ATTACHMENT_SIZE,
+  type PendingAttachment,
+  formatDuration,
+  getAttachmentType,
+} from '@/features/upload/lib/attachments';
+import { isVoiceRecordingSupported, useVoiceRecorder } from '@/hooks/use-voice-recorder';
 import { cn } from '@/lib/utils';
 
+import { ComposerAttachments } from './composer-attachments';
 import { EmojiPopover } from './emoji-popover';
 import { Hint } from './hint';
 
@@ -26,13 +35,13 @@ const MAX_MENTION_RESULTS = 6;
 // "@" followed by up to two words right before the cursor
 const MENTION_REGEX = /(?:^|\s)@([^\s@]*(?: [^\s@]*)?)$/;
 
-type EditorValue = {
-  image: File | null;
+export type EditorValue = {
+  attachments: PendingAttachment[];
   body: string;
 };
 
 interface EditorProps {
-  onSubmit: ({ image, body }: EditorValue) => void;
+  onSubmit: ({ attachments, body }: EditorValue) => void;
   onCancel?: () => void;
   onTextChange?: (body: string, text: string) => void;
   placeholder?: string;
@@ -55,11 +64,62 @@ const Editor = ({
   mentions = [],
 }: EditorProps) => {
   const [text, setText] = useState('');
-  const [image, setImage] = useState<File | null>(null);
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [canRecord, setCanRecord] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageElementRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentsRef = useRef(attachments);
+  attachmentsRef.current = attachments;
+
+  const recorder = useVoiceRecorder();
+
+  useEffect(() => setCanRecord(isVoiceRecordingSupported()), []);
+
+  const addFiles = useCallback((files: File[], duration?: number) => {
+    const accepted: PendingAttachment[] = [];
+
+    for (const file of files) {
+      const type = getAttachmentType(file);
+
+      if (!type) {
+        toast.error(`${file.name}: only photos, videos and audio can be attached.`);
+        continue;
+      }
+
+      if (file.size > MAX_ATTACHMENT_SIZE) {
+        toast.error(`${file.name} is larger than ${MAX_ATTACHMENT_SIZE / 1024 / 1024}MB.`);
+        continue;
+      }
+
+      accepted.push({ id: crypto.randomUUID(), file, type, duration });
+    }
+
+    const room = MAX_ATTACHMENTS - attachmentsRef.current.length;
+
+    if (accepted.length > room) toast.error(`You can attach up to ${MAX_ATTACHMENTS} files per message.`);
+
+    if (room > 0 && accepted.length > 0) setAttachments((current) => [...current, ...accepted.slice(0, room)]);
+  }, []);
+
+  const removeAttachment = (id: string) => setAttachments((current) => current.filter((attachment) => attachment.id !== id));
+
+  const onStartRecording = async () => {
+    try {
+      await recorder.start();
+    } catch (error) {
+      console.error('[VOICE_RECORDING]: ', error);
+      toast.error('Could not access the microphone. Allow it in your browser settings.');
+    }
+  };
+
+  const onStopRecording = async () => {
+    const recording = await recorder.stop();
+
+    if (recording) addFiles([recording.file], recording.duration);
+  };
   const quillRef = useRef<Quill | null>(null);
 
   const submitRef = useRef(onSubmit);
@@ -67,6 +127,8 @@ const Editor = ({
   const placeholderRef = useRef(placeholder);
   const defaultValueRef = useRef(defaultValue);
   const disabledRef = useRef(disabled);
+  const variantRef = useRef(variant);
+  const addFilesRef = useRef<(files: File[]) => void>(() => {});
 
   const [mention, setMention] = useState<{ query: string; start: number } | null>(null);
   const [activeMention, setActiveMention] = useState(0);
@@ -110,6 +172,8 @@ const Editor = ({
     placeholderRef.current = placeholder;
     defaultValueRef.current = defaultValue;
     disabledRef.current = disabled;
+    variantRef.current = variant;
+    addFilesRef.current = addFiles;
     mentionsRef.current = mentions;
 
     mentionKeyRef.current = (action) => {
@@ -165,17 +229,17 @@ const Editor = ({
 
                 const text = quill.getText();
 
-                if (!imageElementRef.current || !submitRef.current) return;
+                if (!submitRef.current) return;
 
-                const addedImage = imageElementRef.current.files?.[0] || null;
+                const addedAttachments = attachmentsRef.current;
 
-                const isEmpty = !addedImage && text.replace(/<(.|\n)*?>/g, '').trim().length === 0;
+                const isEmpty = addedAttachments.length === 0 && text.replace(/<(.|\n)*?>/g, '').trim().length === 0;
 
                 if (isEmpty) return;
 
                 const body = JSON.stringify(quill.getContents());
 
-                submitRef.current({ body, image: addedImage });
+                submitRef.current({ body, attachments: addedAttachments });
               },
             },
             shift_enter: {
@@ -215,6 +279,19 @@ const Editor = ({
 
     quill.on(Quill.events.SELECTION_CHANGE, detectMention);
 
+    // pasted files become attachments instead of inline images in the text
+    const onPaste = (event: ClipboardEvent) => {
+      const files = Array.from(event.clipboardData?.files ?? []);
+
+      if (files.length === 0 || variantRef.current !== 'create') return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      addFilesRef.current(files);
+    };
+
+    container.addEventListener('paste', onPaste, true);
+
     quill.on(Quill.events.TEXT_CHANGE, () => {
       setText(quill.getText());
       detectMention();
@@ -222,6 +299,8 @@ const Editor = ({
     });
 
     return () => {
+      container.removeEventListener('paste', onPaste, true);
+
       if (container) container.innerHTML = '';
 
       quill.off(Quill.events.TEXT_CHANGE);
@@ -250,7 +329,7 @@ const Editor = ({
 
   const isIOS = /iPad|iPhone|iPod|Mac/.test(navigator.userAgent);
 
-  const isEmpty = !image && text.replace(/<(.|\n)*?>/g, '').trim().length === 0;
+  const isEmpty = attachments.length === 0 && text.replace(/<(.|\n)*?>/g, '').trim().length === 0;
 
   return (
     <div className="relative flex flex-col">
@@ -292,41 +371,42 @@ const Editor = ({
         </div>
       )}
 
-      <input type="file" accept="image/*" ref={imageElementRef} onChange={(e) => setImage(e.target.files![0])} className="hidden" />
+      <input
+        type="file"
+        accept="image/*,video/*,audio/*"
+        multiple
+        ref={fileInputRef}
+        onChange={(e) => {
+          addFiles(Array.from(e.target.files ?? []));
+          e.target.value = '';
+        }}
+        className="hidden"
+      />
 
       <div
+        onDragOver={(e) => {
+          if (variant !== 'create' || !e.dataTransfer.types.includes('Files')) return;
+
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          if (variant !== 'create' || e.dataTransfer.files.length === 0) return;
+
+          e.preventDefault();
+          setIsDragging(false);
+          addFiles(Array.from(e.dataTransfer.files));
+        }}
         className={cn(
           'flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white transition focus-within:border-slate-300 focus-within:shadow-sm',
           disabled && 'opacity-50',
+          isDragging && 'border-dashed border-[#1264A3] bg-[#1264A3]/5',
         )}
       >
         <div ref={containerRef} className="h-full" />
 
-        {!!image && (
-          <div className="p-2">
-            <div className="group/image relative flex size-[62px] items-center justify-center">
-              <Hint label="Remove image">
-                <button
-                  onClick={() => {
-                    setImage(null);
-
-                    imageElementRef.current!.value = '';
-                  }}
-                  className="absolute -right-2.5 -top-2.5 z-[4] hidden size-6 items-center justify-center rounded-full border-2 border-white bg-black/70 text-white hover:bg-black group-hover/image:flex"
-                >
-                  <XIcon className="size-3.5" />
-                </button>
-              </Hint>
-
-              <Image
-                src={URL.createObjectURL(image)}
-                alt="Uploaded image"
-                fill
-                className="overflow-hidden rounded-xl border object-cover"
-              />
-            </div>
-          </div>
-        )}
+        <ComposerAttachments attachments={attachments} onRemove={removeAttachment} />
 
         <div className="z-[5] flex px-2 pb-2">
           <Hint label={isToolbarVisible ? 'Hide formatting' : 'Show formatting'}>
@@ -342,11 +422,38 @@ const Editor = ({
           </EmojiPopover>
 
           {variant === 'create' && (
-            <Hint label="Image">
-              <Button disabled={disabled} size="iconSm" variant="ghost" onClick={() => imageElementRef.current?.click()}>
-                <ImageIcon className="size-4" />
+            <Hint label="Attach photos, videos or audio">
+              <Button disabled={disabled} size="iconSm" variant="ghost" onClick={() => fileInputRef.current?.click()}>
+                <Paperclip className="size-4" />
               </Button>
             </Hint>
+          )}
+
+          {variant === 'create' && canRecord && (
+            <Hint label="Record a voice message">
+              <Button disabled={disabled || recorder.isRecording} size="iconSm" variant="ghost" onClick={onStartRecording}>
+                <Mic className="size-4" />
+              </Button>
+            </Hint>
+          )}
+
+          {recorder.isRecording && (
+            <div className="ml-2 flex items-center gap-2 rounded-md bg-red-50 px-2 text-sm text-red-600">
+              <span className="size-2 animate-pulse rounded-full bg-red-600" />
+              <span className="tabular-nums">{formatDuration(recorder.seconds)}</span>
+
+              <Hint label="Discard">
+                <Button size="iconSm" variant="ghost" onClick={recorder.cancel} aria-label="Discard recording">
+                  <Trash2 className="size-4" />
+                </Button>
+              </Hint>
+
+              <Hint label="Finish recording">
+                <Button size="iconSm" variant="ghost" onClick={onStopRecording} aria-label="Finish recording">
+                  <Check className="size-4" />
+                </Button>
+              </Hint>
+            </div>
           )}
 
           {variant === 'update' && (
@@ -362,7 +469,7 @@ const Editor = ({
 
                   onSubmit({
                     body: JSON.stringify(quillRef.current.getContents()),
-                    image,
+                    attachments,
                   });
                 }}
                 size="sm"
@@ -376,13 +483,13 @@ const Editor = ({
           {variant === 'create' && (
             <Button
               title="Send Message"
-              disabled={disabled || isEmpty}
+              disabled={disabled || isEmpty || recorder.isRecording}
               onClick={() => {
                 if (!quillRef.current) return;
 
                 onSubmit({
                   body: JSON.stringify(quillRef.current.getContents()),
-                  image,
+                  attachments,
                 });
               }}
               className={cn(

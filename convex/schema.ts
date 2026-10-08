@@ -2,6 +2,14 @@ import { authTables } from '@convex-dev/auth/server';
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
+export const attachmentValidator = v.object({
+  storageId: v.id('_storage'),
+  type: v.union(v.literal('image'), v.literal('video'), v.literal('audio')),
+  name: v.optional(v.string()),
+  // seconds, for voice messages
+  duration: v.optional(v.number()),
+});
+
 const schema = defineSchema({
   ...authTables,
   workspaces: defineTable({
@@ -29,6 +37,7 @@ const schema = defineSchema({
   messages: defineTable({
     body: v.string(),
     image: v.optional(v.id('_storage')),
+    attachments: v.optional(v.array(attachmentValidator)),
     memberId: v.id('members'),
     workspaceId: v.id('workspaces'),
     channelId: v.optional(v.id('channels')),
