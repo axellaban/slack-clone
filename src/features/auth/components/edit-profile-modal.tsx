@@ -1,7 +1,7 @@
 'use client';
 
 import { Camera, Loader } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { Id } from '@/../convex/_generated/dataModel';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useGenerateUploadUrl } from '@/features/upload/api/use-generate-upload-url';
+import { useObjectUrl } from '@/hooks/use-object-url';
 
 import { useCurrentUser } from '../api/use-current-user';
 import { useUpdateProfile } from '../api/use-update-profile';
@@ -40,13 +41,7 @@ export const EditProfileModal = () => {
     setRemoveImage(false);
   }, [open, user?.name]);
 
-  const imagePreview = useMemo(() => (image ? URL.createObjectURL(image) : undefined), [image]);
-
-  useEffect(() => {
-    return () => {
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
-    };
-  }, [imagePreview]);
+  const imagePreview = useObjectUrl(image);
 
   const previewUrl = imagePreview ?? (removeImage ? undefined : user?.image);
 

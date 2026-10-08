@@ -97,6 +97,7 @@ export const MessageList = ({
                 reactions={message.reactions}
                 body={message.body}
                 image={message.image}
+                attachments={message.attachments}
                 updatedAt={message.updatedAt}
                 createdAt={message._creationTime}
                 threadCount={message.threadCount}

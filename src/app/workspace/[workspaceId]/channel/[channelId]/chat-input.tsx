@@ -7,10 +7,12 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { Id } from '@/../convex/_generated/dataModel';
+import type { EditorValue } from '@/components/editor';
 import { getDraft, getDraftKey, removeDraft, saveDraft } from '@/features/drafts/lib/drafts';
 import { useMentionOptions } from '@/features/members/api/use-mention-options';
 import { useCreateMessage } from '@/features/messages/api/use-create-message';
 import { useGenerateUploadUrl } from '@/features/upload/api/use-generate-upload-url';
+import { type UploadedAttachment, uploadAttachments } from '@/features/upload/lib/attachments';
 import { useChannelId } from '@/hooks/use-channel-id';
 import { useWorkspaceId } from '@/hooks/use-workspace-id';
 
@@ -31,7 +33,7 @@ type CreateMessageValues = {
   channelId: Id<'channels'>;
   workspaceId: Id<'workspaces'>;
   body: string;
-  image?: Id<'_storage'>;
+  attachments?: UploadedAttachment[];
 };
 
 export const ChatInput = ({ placeholder }: ChatInputProps) => {
@@ -50,7 +52,7 @@ export const ChatInput = ({ placeholder }: ChatInputProps) => {
   const draft = typeof window === 'undefined' ? null : getDraft(draftKey);
   const { mutate: generateUploadUrl } = useGenerateUploadUrl();
 
-  const handleSubmit = async ({ body, image }: { body: string; image: File | null }) => {
+  const handleSubmit = async ({ body, attachments }: EditorValue) => {
     try {
       setIsPending(true);
       innerRef.current?.enable(false);
@@ -59,30 +61,10 @@ export const ChatInput = ({ placeholder }: ChatInputProps) => {
         channelId,
         workspaceId,
         body,
-        image: undefined,
       };
 
-      if (image) {
-        const url = await generateUploadUrl(
-          {},
-          {
-            throwError: true,
-          },
-        );
-
-        if (!url) throw new Error('URL not found.');
-
-        const result = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-type': image.type },
-          body: image,
-        });
-
-        if (!result.ok) throw new Error('Failed to upload image.');
-
-        const { storageId } = await result.json();
-
-        values.image = storageId;
+      if (attachments.length > 0) {
+        values.attachments = await uploadAttachments(attachments, () => generateUploadUrl({}, { throwError: true }));
       }
 
       await createMessage(values, { throwError: true });

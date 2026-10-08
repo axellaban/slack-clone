@@ -6,6 +6,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { Id } from '@/../convex/_generated/dataModel';
+import type { EditorValue } from '@/components/editor';
 import { Message } from '@/components/message';
 import { Button } from '@/components/ui/button';
 import { useCurrentMember } from '@/features/members/api/use-current-member';
@@ -14,6 +15,7 @@ import { useCreateMessage } from '@/features/messages/api/use-create-message';
 import { useGetMessage } from '@/features/messages/api/use-get-message';
 import { useGetMessages } from '@/features/messages/api/use-get-messages';
 import { useGenerateUploadUrl } from '@/features/upload/api/use-generate-upload-url';
+import { type UploadedAttachment, uploadAttachments } from '@/features/upload/lib/attachments';
 import { useChannelId } from '@/hooks/use-channel-id';
 import { useWorkspaceId } from '@/hooks/use-workspace-id';
 
@@ -42,7 +44,7 @@ type CreateMessageValues = {
   workspaceId: Id<'workspaces'>;
   parentMessageId: Id<'messages'>;
   body: string;
-  image?: Id<'_storage'>;
+  attachments?: UploadedAttachment[];
 };
 
 interface ThreadProps {
@@ -74,7 +76,7 @@ export const Thread = ({ messageId, onClose }: ThreadProps) => {
   const canLoadMore = status === 'CanLoadMore';
   const isLoadingMore = status === 'LoadingMore';
 
-  const handleSubmit = async ({ body, image }: { body: string; image: File | null }) => {
+  const handleSubmit = async ({ body, attachments }: EditorValue) => {
     try {
       setIsPending(true);
       innerRef.current?.enable(false);
@@ -84,30 +86,10 @@ export const Thread = ({ messageId, onClose }: ThreadProps) => {
         workspaceId,
         parentMessageId: messageId,
         body,
-        image: undefined,
       };
 
-      if (image) {
-        const url = await generateUploadUrl(
-          {},
-          {
-            throwError: true,
-          },
-        );
-
-        if (!url) throw new Error('URL not found.');
-
-        const result = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-type': image.type },
-          body: image,
-        });
-
-        if (!result.ok) throw new Error('Failed to upload image.');
-
-        const { storageId } = await result.json();
-
-        values.image = storageId;
+      if (attachments.length > 0) {
+        values.attachments = await uploadAttachments(attachments, () => generateUploadUrl({}, { throwError: true }));
       }
 
       await createMessage(values, { throwError: true });
@@ -213,6 +195,7 @@ export const Thread = ({ messageId, onClose }: ThreadProps) => {
                   reactions={message.reactions}
                   body={message.body}
                   image={message.image}
+                  attachments={message.attachments}
                   updatedAt={message.updatedAt}
                   createdAt={message._creationTime}
                   threadCount={message.threadCount}
@@ -265,6 +248,7 @@ export const Thread = ({ messageId, onClose }: ThreadProps) => {
           isAuthor={message.memberId === currentMember?._id}
           body={message.body}
           image={message.image}
+          attachments={message.attachments}
           createdAt={message._creationTime}
           updatedAt={message.updatedAt}
           id={message._id}
