@@ -29,7 +29,7 @@ export const update = mutation({
 
     if (name.length < 1 || name.length > 80) throw new Error('Name must be between 1 and 80 characters.');
 
-    const patch: { name: string; image?: string } = { name };
+    const patch: { name: string; image?: string; profileUpdatedAt: number } = { name, profileUpdatedAt: Date.now() };
 
     if (args.image) {
       const url = await ctx.storage.getUrl(args.image);

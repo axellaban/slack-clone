@@ -12,6 +12,14 @@ export const attachmentValidator = v.object({
 
 const schema = defineSchema({
   ...authTables,
+  users: defineTable({
+    ...authTables.users.validator.fields,
+    // set when the person edits their name or photo in the app, so sign-ins
+    // with GitHub/Google stop overwriting them with the provider's profile
+    profileUpdatedAt: v.optional(v.number()),
+  })
+    .index('email', ['email'])
+    .index('phone', ['phone']),
   workspaces: defineTable({
     name: v.string(),
     userId: v.id('users'),
