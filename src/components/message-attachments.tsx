@@ -1,9 +1,11 @@
-import { ChevronLeft, ChevronRight, Mic } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { type AttachmentType, formatDuration } from '@/features/upload/lib/attachments';
+import type { AttachmentType } from '@/features/upload/lib/attachments';
 import { cn } from '@/lib/utils';
+
+import { AudioPlayer } from './audio-player';
 
 export type MessageAttachment = {
   storageId: string;
@@ -114,20 +116,7 @@ export const MessageAttachments = ({ attachments = [] }: MessageAttachmentsProps
       ))}
 
       {audios.map((audio) => (
-        <div key={audio.storageId} className="my-1 flex w-full max-w-[360px] items-center gap-2 rounded-lg border bg-white p-2 shadow-sm">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#1264A3]/10 text-[#1264A3]">
-            <Mic className="size-4" />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-muted-foreground">
-              {audio.name?.startsWith('Voice message') ? 'Voice message' : (audio.name ?? 'Audio')}
-              {audio.duration ? ` · ${formatDuration(audio.duration)}` : ''}
-            </p>
-
-            <audio src={audio.url} controls preload="metadata" className="h-8 w-full" />
-          </div>
-        </div>
+        <AudioPlayer key={audio.storageId} url={audio.url} name={audio.name} duration={audio.duration} />
       ))}
     </div>
   );
