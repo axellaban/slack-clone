@@ -30,9 +30,15 @@ export const useVoiceRecorder = () => {
   useEffect(() => cleanup, [cleanup]);
 
   const start = useCallback(async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
     const mimeType = getMimeType();
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    // voice needs far less than the ~128kbps browsers use by default: smaller files load faster on mobile
+    const recorder = new MediaRecorder(stream, {
+      ...(mimeType && { mimeType }),
+      audioBitsPerSecond: mimeType.includes('mp4') ? 48_000 : 32_000,
+    });
 
     chunksRef.current = [];
     recorder.ondataavailable = (event) => {
