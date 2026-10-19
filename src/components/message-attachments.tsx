@@ -1,8 +1,8 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react';
 import { useState } from 'react';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import type { AttachmentType } from '@/features/upload/lib/attachments';
+import { type AttachmentType, formatFileSize, getFileExtension } from '@/features/upload/lib/attachments';
 import { cn } from '@/lib/utils';
 
 import { AudioPlayer } from './audio-player';
@@ -13,6 +13,7 @@ export type MessageAttachment = {
   url: string;
   name?: string;
   duration?: number;
+  size?: number;
 };
 
 interface MessageAttachmentsProps {
@@ -99,6 +100,7 @@ export const MessageAttachments = ({ attachments = [] }: MessageAttachmentsProps
   const images = attachments.filter((attachment) => attachment.type === 'image');
   const videos = attachments.filter((attachment) => attachment.type === 'video');
   const audios = attachments.filter((attachment) => attachment.type === 'audio');
+  const files = attachments.filter((attachment) => attachment.type === 'file');
 
   return (
     <div className="flex flex-col">
@@ -117,6 +119,32 @@ export const MessageAttachments = ({ attachments = [] }: MessageAttachmentsProps
 
       {audios.map((audio) => (
         <AudioPlayer key={audio.storageId} url={audio.url} name={audio.name} duration={audio.duration} />
+      ))}
+
+      {files.map((file) => (
+        // opens in a new tab: PDFs show in the browser's viewer, other types download
+        <a
+          key={file.storageId}
+          href={file.url}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="my-1 flex w-full max-w-[360px] items-center gap-3 rounded-lg border bg-white p-2 shadow-sm transition hover:bg-slate-50"
+        >
+          <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-md bg-[#E8F0FE] text-[#1264A3]">
+            <FileText className="size-4" />
+            <span className="text-[9px] font-bold">{getFileExtension(file.name)}</span>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{file.name ?? 'File'}</p>
+            <p className="text-xs text-muted-foreground">
+              {getFileExtension(file.name)}
+              {file.size ? ` · ${formatFileSize(file.size)}` : ''}
+            </p>
+          </div>
+
+          <Download className="size-4 shrink-0 text-muted-foreground" />
+        </a>
       ))}
     </div>
   );
