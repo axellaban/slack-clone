@@ -84,11 +84,6 @@ const Editor = ({
     for (const file of files) {
       const type = getAttachmentType(file);
 
-      if (!type) {
-        toast.error(`${file.name}: only photos, videos and audio can be attached.`);
-        continue;
-      }
-
       if (file.size > MAX_ATTACHMENT_SIZE) {
         toast.error(`${file.name} is larger than ${MAX_ATTACHMENT_SIZE / 1024 / 1024}MB.`);
         continue;
@@ -373,7 +368,6 @@ const Editor = ({
 
       <input
         type="file"
-        accept="image/*,video/*,audio/*"
         multiple
         ref={fileInputRef}
         onChange={(e) => {
@@ -422,7 +416,7 @@ const Editor = ({
           </EmojiPopover>
 
           {variant === 'create' && (
-            <Hint label="Attach photos, videos or audio">
+            <Hint label="Attach files">
               <Button disabled={disabled} size="iconSm" variant="ghost" onClick={() => fileInputRef.current?.click()}>
                 <Paperclip className="size-4" />
               </Button>

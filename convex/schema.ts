@@ -4,8 +4,10 @@ import { v } from 'convex/values';
 
 export const attachmentValidator = v.object({
   storageId: v.id('_storage'),
-  type: v.union(v.literal('image'), v.literal('video'), v.literal('audio')),
+  type: v.union(v.literal('image'), v.literal('video'), v.literal('audio'), v.literal('file')),
   name: v.optional(v.string()),
+  // bytes, shown for documents
+  size: v.optional(v.number()),
   // seconds, for voice messages
   duration: v.optional(v.number()),
 });

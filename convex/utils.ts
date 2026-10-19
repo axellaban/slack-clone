@@ -12,7 +12,7 @@ export const toPlainText = (body: string) => {
   }
 };
 
-type AttachmentLike = { type: 'image' | 'video' | 'audio'; name?: string };
+type AttachmentLike = { type: 'image' | 'video' | 'audio' | 'file'; name?: string };
 
 const plural = (count: number, singular: string, pluralForm = `${singular}s`) => (count === 1 ? `a ${singular}` : `${count} ${pluralForm}`);
 
@@ -32,6 +32,7 @@ export const describeMessage = (message: { body: string; image?: unknown; attach
   if (audios === attachments.length) return audios === 1 ? 'Sent a voice message' : `Sent ${audios} audio files`;
   if (images === attachments.length) return `Sent ${plural(images, 'photo')}`;
   if (videos === attachments.length) return `Sent ${plural(videos, 'video')}`;
+  if (attachments.length === 1) return `Sent ${attachments[0].name ?? 'a file'}`;
 
   return `Sent ${attachments.length} files`;
 };

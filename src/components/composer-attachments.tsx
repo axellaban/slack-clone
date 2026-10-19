@@ -1,6 +1,6 @@
-import { Film, Mic, XIcon } from 'lucide-react';
+import { FileText, Film, Mic, XIcon } from 'lucide-react';
 
-import { type PendingAttachment, formatDuration } from '@/features/upload/lib/attachments';
+import { type PendingAttachment, formatDuration, getFileExtension } from '@/features/upload/lib/attachments';
 import { useObjectUrl } from '@/hooks/use-object-url';
 
 import { Hint } from './hint';
@@ -11,7 +11,7 @@ interface ComposerAttachmentsProps {
 }
 
 const Preview = ({ attachment }: { attachment: PendingAttachment }) => {
-  const url = useObjectUrl(attachment.type === 'audio' ? null : attachment.file);
+  const url = useObjectUrl(attachment.type === 'image' || attachment.type === 'video' ? attachment.file : null);
 
   if (attachment.type === 'image') {
     // eslint-disable-next-line @next/next/no-img-element
@@ -23,6 +23,15 @@ const Preview = ({ attachment }: { attachment: PendingAttachment }) => {
       <div className="relative size-full bg-black">
         <video src={url} muted playsInline preload="metadata" className="size-full object-cover" />
         <Film className="absolute bottom-1 left-1 size-4 text-white drop-shadow" />
+      </div>
+    );
+  }
+
+  if (attachment.type === 'file') {
+    return (
+      <div className="flex size-full flex-col items-center justify-center gap-0.5 bg-slate-100 text-slate-600" title={attachment.file.name}>
+        <FileText className="size-5" />
+        <span className="text-[10px] font-semibold">{getFileExtension(attachment.file.name)}</span>
       </div>
     );
   }
